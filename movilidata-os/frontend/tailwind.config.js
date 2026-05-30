@@ -30,7 +30,8 @@ export default {
           600: '#475569',
           700: '#334155',
           800: '#1E293B',
-          900: '#0F172A'
+          900: '#0F172A',
+          hover: 'var(--color-surface-hover)'
         },
         danger: { DEFAULT: '#EF4444', light: '#FEE2E2', dark: '#991B1B' },
         warning: { DEFAULT: '#F59E0B', light: '#FEF3C7', dark: '#D97706' },

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { setActiveTab, setOfflineMode, addNotification } from './redux/slices/uiSlice'
 import { fetchDashboard } from './redux/slices/dashboardSlice'
@@ -14,13 +14,26 @@ import Assistant from './components/Assistant'
 import AlertsHistory from './components/AlertsHistory'
 import ToastContainer from './components/ToastContainer'
 
+const THEME_META = document.querySelector('meta[name="theme-color"]')
+
+function applyTheme(dark) {
+  const action = dark ? 'add' : 'remove'
+  document.documentElement.classList[action]('dark')
+  if (THEME_META) {
+    THEME_META.content = dark ? '#0F172A' : '#F8FAFC'
+  }
+}
+
 export default function App() {
   const dispatch = useDispatch()
   const { activeTab, darkMode, offlineMode } = useSelector((state) => state.ui)
-  const dashboardData = useSelector((state) => state.dashboard.data)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailContent, setDetailContent] = useState(null)
   const [detailTitle, setDetailTitle] = useState('')
+
+  useEffect(() => {
+    applyTheme(darkMode)
+  }, [darkMode])
 
   useEffect(() => {
     dispatch(fetchDashboard())
@@ -45,14 +58,6 @@ export default function App() {
     }
   }, [dispatch])
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [darkMode])
-
   const openDetail = useCallback((title, content) => {
     setDetailTitle(title)
     setDetailContent(content)
@@ -64,7 +69,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'dark bg-surface-900 text-slate-100' : 'bg-surface-50 text-surface-900'}`}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-surface-900 focus:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
         Saltar al contenido principal
       </a>
@@ -80,15 +85,9 @@ export default function App() {
             className="flex-1 overflow-auto p-4 lg:p-6 space-y-6"
             role="main"
           >
-            {activeTab === 'dashboard' && (
-              <Dashboard openDetail={openDetail} />
-            )}
-            {activeTab === 'accidentes' && (
-              <HeatmapAccidents openDetail={openDetail} />
-            )}
-            {activeTab === 'trafico' && (
-              <TrafficMonitor openDetail={openDetail} />
-            )}
+            {activeTab === 'dashboard' && <Dashboard openDetail={openDetail} />}
+            {activeTab === 'accidentes' && <HeatmapAccidents openDetail={openDetail} />}
+            {activeTab === 'trafico' && <TrafficMonitor openDetail={openDetail} />}
             {activeTab === 'prediccion' && <Prediction />}
             {activeTab === 'rutas' && <SafeRoute />}
             {activeTab === 'asistente' && <Assistant />}
@@ -96,11 +95,7 @@ export default function App() {
         </div>
       </div>
 
-      <DetailPanel
-        open={detailOpen}
-        onClose={closeDetail}
-        title={detailTitle}
-      >
+      <DetailPanel open={detailOpen} onClose={closeDetail} title={detailTitle}>
         {detailContent}
       </DetailPanel>
     </div>

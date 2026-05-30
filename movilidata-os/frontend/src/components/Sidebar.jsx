@@ -40,22 +40,26 @@ export default function Sidebar() {
       )}
 
       <aside
-        className={`fixed md:sticky top-0 left-0 z-40 h-screen w-64 shrink-0 border-r border-surface-200 bg-white flex flex-col transition-transform duration-250 ${
+        className={`fixed md:sticky top-0 left-0 z-40 h-screen w-64 shrink-0 border-r flex flex-col transition-transform duration-250 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderColor: 'var(--color-border)'
+        }}
         role="navigation"
         aria-label="Navegación principal"
       >
         {/* Brand */}
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-surface-200">
+        <div className="flex items-center gap-3 px-5 h-16 border-b" style={{ borderColor: 'var(--color-border)' }}>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
             <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-surface-500">Movilidata OS</p>
-            <h1 className="text-sm font-bold text-surface-900">Medellín</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--color-text-secondary)' }}>Movilidata OS</p>
+            <h1 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>Medellín</h1>
           </div>
         </div>
 
@@ -63,7 +67,7 @@ export default function Sidebar() {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Módulos">
           {navItems.map((group) => (
             <div key={group.section}>
-              <p className="px-3 mb-1 text-2xs font-semibold uppercase tracking-[0.12em] text-surface-400">
+              <p className="px-3 mb-1 text-2xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-text-muted)' }}>
                 {group.section}
               </p>
               <div className="space-y-0.5">
@@ -80,12 +84,17 @@ export default function Sidebar() {
                       aria-current={isActive ? 'page' : undefined}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 ${
                         isActive
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900'
+                          ? 'text-primary-700'
+                          : 'hover:bg-surface-hover'
                       }`}
+                      style={{
+                        backgroundColor: isActive ? 'var(--color-primary-bg)' : 'transparent',
+                        color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)'
+                      }}
                     >
                       <svg
-                        className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary-600' : 'text-surface-400'}`}
+                        className="h-4 w-4 shrink-0"
+                        style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -104,26 +113,27 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-surface-200 p-3 space-y-1">
+        <div className="border-t p-3 space-y-1" style={{ borderColor: 'var(--color-border)' }}>
           <button
             type="button"
             onClick={() => dispatch(toggleDarkMode())}
             aria-label={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-surface-600 hover:bg-surface-100 hover:text-surface-900 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 hover:bg-surface-hover"
+            style={{ color: 'var(--color-text-secondary)' }}
           >
             {darkMode ? (
-              <svg className="h-4 w-4 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             ) : (
-              <svg className="h-4 w-4 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
               </svg>
             )}
             {darkMode ? 'Modo claro' : 'Modo oscuro'}
           </button>
           <div className="px-3 py-1.5">
-            <p className="text-2xs text-surface-400">v1.0 · CTGI SENA 2026</p>
+            <p className="text-2xs" style={{ color: 'var(--color-text-muted)' }}>v1.0 · CTGI SENA 2026</p>
           </div>
         </div>
       </aside>

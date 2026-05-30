@@ -3,7 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#1F2937" />
+    <meta name="theme-color" content="#F8FAFC" />
+    <script>
+      (function() {
+        var darkMode = localStorage.getItem('movilidata-darkMode');
+        if (darkMode === null) {
+          darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'true' : 'false';
+        }
+        if (darkMode === 'true') {
+          document.documentElement.classList.add('dark');
+          document.querySelector('meta[name="theme-color"]').content = '#0F172A';
+        }
+      })();
+    </script>
     <meta name="description" content="Plataforma unificada de movilidad inteligente para Medellín. Monitoreo en tiempo real, predicción de congestión, rutas seguras y asistente IA." />
     <meta name="application-name" content="Movilidata OS" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

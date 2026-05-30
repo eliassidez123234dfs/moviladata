@@ -14,14 +14,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 try:
-    df_accidentes = pd.read_csv(os.path.join(DATA_DIR, "accidents_mock.csv"))
-    df_trafico = pd.read_csv(os.path.join(DATA_DIR, "traffic_mock.csv"))
+    acc_path = os.path.join(DATA_DIR, "accidents_sample.csv")
+    df_accidentes = pd.read_csv(acc_path)
+    df_trafico = None
 
-    # Generamos un resumen estadístico para darle contexto rápido a la IA sin saturar los tokens
     contexto_datos = f"""
-    Estadísticas del tráfico actual en Medellín:
-    {df_trafico.describe().to_string()}
-    
     Zonas con mayor registro de accidentes en el dataset:
     {df_accidentes['comuna'].value_counts().head(5).to_string() if 'comuna' in df_accidentes.columns else 'Datos de comunas cargados'}
     """

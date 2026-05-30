@@ -34,7 +34,15 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    dispatch(fetchDashboard())
+    let retries = 0
+    const fetchWithRetry = async () => {
+      const result = await dispatch(fetchDashboard())
+      if (fetchDashboard.rejected.match(result) && retries < 5) {
+        retries++
+        setTimeout(fetchWithRetry, 2000 * retries)
+      }
+    }
+    fetchWithRetry()
     const id = setInterval(() => dispatch(fetchDashboard()), 60000)
     return () => clearInterval(id)
   }, [dispatch])

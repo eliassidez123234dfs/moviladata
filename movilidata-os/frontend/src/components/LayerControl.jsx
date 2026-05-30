@@ -13,11 +13,14 @@ export default function LayerControl({ activeLayers, onToggle }) {
 
   return (
     <div className="absolute bottom-4 right-4 z-[1000]">
-      <div className="rounded-xl border border-surface-200 bg-white shadow-lg overflow-hidden">
+      <div className="rounded-xl border shadow-lg overflow-hidden" style={{ backgroundColor: '#161B22', borderColor: '#30363D' }}>
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="flex w-full items-center gap-2 px-4 py-2.5 text-xs font-semibold text-surface-600 hover:bg-surface-50 transition-colors"
+          className="flex w-full items-center gap-2 px-4 py-2.5 text-xs font-semibold transition-colors"
+          style={{ color: '#8B949E' }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(88, 166, 255, 0.08)'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           aria-label={collapsed ? 'Mostrar capas' : 'Ocultar capas'}
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -29,24 +32,24 @@ export default function LayerControl({ activeLayers, onToggle }) {
           </svg>
         </button>
         {!collapsed && (
-          <div className="border-t border-surface-200 p-3 space-y-2 min-w-[180px]">
+          <div className="border-t p-3 space-y-2 min-w-[180px]" style={{ borderColor: '#30363D' }}>
             {LAYERS.map((layer) => (
               <label key={layer.id} className="flex items-center gap-2.5 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={activeLayers[layer.id] ?? layer.default}
                   onChange={() => onToggle(layer.id)}
-                  className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                  className="h-4 w-4 rounded cursor-pointer" style={{ accentColor: '#58A6FF' }}
                   aria-label={`Mostrar capa: ${layer.label}`}
                 />
                 <span className={`h-2.5 w-2.5 rounded-full ${layer.color} shrink-0`} />
-                <span className="text-xs font-medium text-surface-600 group-hover:text-surface-900 transition-colors">
+                <span className="text-xs font-medium transition-colors" style={{ color: '#8B949E' }}>
                   {layer.label}
                 </span>
               </label>
             ))}
-            <div className="pt-2 mt-2 border-t border-surface-100">
-              <p className="text-2xs text-surface-400">
+            <div className="pt-2 mt-2 border-t" style={{ borderColor: '#30363D' }}>
+              <p className="text-2xs" style={{ color: '#6E7681' }}>
                 <a href="https://medata.gov.co" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary-600">Medata</a>
                 {' · '}
                 <a href="https://siata.gov.co" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary-600">SIATA</a>

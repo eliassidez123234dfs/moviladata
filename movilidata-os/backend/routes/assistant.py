@@ -151,7 +151,7 @@ def call_anthropic(question, context, historial):
         },
         headers={
             'x-api-key': api_key,
-            'anthropic-version': '2023-06-01',
+            'ant                                                                                                hropic-version': '2023-06-01',
             'Content-Type': 'application/json'
         },
         timeout=12

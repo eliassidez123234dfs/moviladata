@@ -82,21 +82,21 @@ class MovilidataAgent:
         q = question.lower()
 
         intents = {
-            'accidentes_total': r'\b(total|cuantos|cantidad|n.mero)\b.*\b(accident|siniestro|incident)\b',
-            'accidentes_tipo': r'\b(tipo|clase|categor.a)\b.*\b(accident|incident|choque|atropello)\b',
-            'accidentes_comuna': r'\b(comuna|sector|zona|barrio|d.nde|cu.l)\b.*\b(m.s|mayor|cr.tico|peligro|accident)\b',
+            'accidentes_total': r'\b(?:accident(?:e|es)|siniestro|choque|atropello|colisi[oó]n|volcamiento|ca[íi]da)\b.*\b(?:total|cuant(?:os|as)|cantidad|n[uú]mero|dame|dar|informaci[oó]n|estado|estad[ií]stica)\b|\b(?:total|cuant(?:os|as)|cantidad|n[uú]mero|dame|dar|informaci[oó]n|estado|estad[ií]stica)\b.*\b(?:accident(?:e|es)|siniestro|choque|atropello|colisi[oó]n|volcamiento|ca[íi]da)\b',
+            'accidentes_tipo': r'\b(?:tipo|clase|categor[íi]a|forma)\b.*\b(?:accident(?:e|es)|siniestro|choque|atropello|colisi[oó]n|volcamiento|ca[íi]da)\b',
+            'accidentes_comuna': r'\b(?:comuna|sector|zona|barrio|vecindario)\b.*\b(?:accident(?:e|es)|siniestro|choque|atropello|colisi[oó]n|volcamiento|ca[íi]da)\b|\b(?:accident(?:e|es)|siniestro|choque|atropello|colisi[oó]n|volcamiento|ca[íi]da)\b.*\b(?:comuna|sector|zona|barrio|vecindario)\b',
             'accidentes_gravedad': r'\b(grave|leve|moderado|muerto|fatal|herido|severidad|gravedad)\b',
-            'accidentes_tendencia': r'\b(tendencia|evoluci.n|cambio|aument|disminu|mes|año)\b',
-            'trafico_ahora': r'\b(tr.fico|congesti.n|tr.nsito|v.as|vía|call)\b.*\b(ahora|actual|momento|estado)\b',
-            'trafico_velocidad': r'\b(velocidad|r.pido|lento|km/h|promedio)\b',
-            'trafico_congestion': r'\b(congestion|atasc|tranc|demora|retraso|taco)\b',
-            'clima_ahora': r'\b(clima|lluvia|precipitaci.n|temperatura|tiempo|SIATA)\b',
-            'ruta_segura': r'\b(ruta|camino|viaje|recorrido|trayecto|segur)\b',
-            'alerta_activa': r'\b(alerta|aviso|notificaci.n|peligro|advertencia)\b',
-            'zona_riesgo': r'\b(riesgo|peligro|cr.tico|insegur|evitar|peligros|peligros)\w*\b',
-            'ranking_accidentes': r'\b(ranking|top|mayor|peor|m.s peligro)\w*\b.*\b(comuna|zona|sector|accident)\b',
-            'recomendar': r'\b(recomend|consejo|sugerencia|qu. hacer|deb.)\b',
-            'saludar': r'\b(hola|buen|salud|gracias|ayuda|qué tal)\b'
+            'accidentes_tendencia': r'\b(tendencia|evoluci[oó]n|cambio|aument|disminu|mes|a[oó]o)\b',
+            'trafico_ahora': r'\b(?:tr[áa]fico|congesti[oó]n|tr[áa]nsito|transito|v[íi]a|v[íi]as|vial|sim)\b.*\b(?:ahora|actual(?:mente)?|momento|estado|situaci[oó]n|c[oó]mo|que pasa|qu[eé] pasa|sucede|situaci[oó]n)\b|\b(?:ahora|actual(?:mente)?|momento|estado|situaci[oó]n|c[oó]mo|que pasa|qu[eé] pasa|sucede)\b.*\b(?:tr[áa]fico|congesti[oó]n|tr[áa]nsito|transito|v[íi]a|v[íi]as|vial|sim)\b|\b(?:sim)\b',
+            'trafico_velocidad': r'\b(velocidad|r[áa]pido|lento|km/h|promedio|rapidez)\b',
+            'trafico_congestion': r'\b(congesti[oó]n|atasc[oó]|tranc[aá]|demora|retraso|taco|embotellamiento)\b',
+            'clima_ahora': r'\b(siata|m[eé]teo|clima|lluvia|precipitaci[oó]n|temperatura|tiempo|estaci[oó]n|oleada)\b',
+            'ruta_segura': r'\b(?:ruta|rutas|camino|viaje|recorrido|trayecto|segura|seguro|seguras|seguros|evitar|evite|seguridad|seguro)\b',
+            'alerta_activa': r'\b(alerta|avisos?|notificaci[oó]n|peligro|advertencia|emergencia)\b',
+            'zona_riesgo': r'\b(riesgo|peligro|cr[íi]tico|insegur[oi]dad|evitar|peligros?)\b',
+            'ranking_accidentes': r'\b(ranking|top|mayor|peor|m[aá]s peligro|m[aá]s riesgo)\b.*\b(comuna|zona|sector|accident(?:e|es))\b',
+            'recomendar': r'\b(recomend|consejo|sugerencia|qu[eé] hacer|deber[ií]a)\b',
+            'saludar': r'\b(hola|buen[oa]|salud|gracias|ayuda|qué tal)\b'
         }
 
         for intent, pattern in intents.items():

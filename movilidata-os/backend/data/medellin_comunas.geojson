@@ -1,0 +1,8 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","properties":{"name":"El Poblado"},"geometry":{"type":"Polygon","coordinates":[[[-75.575,6.19],[-75.565,6.19],[-75.565,6.18],[-75.575,6.18],[-75.575,6.19]]] }},
+    {"type":"Feature","properties":{"name":"Laureles"},"geometry":{"type":"Polygon","coordinates":[[[-75.61,6.25],[-75.60,6.25],[-75.60,6.24],[-75.61,6.24],[-75.61,6.25]]] }},
+    {"type":"Feature","properties":{"name":"Centro"},"geometry":{"type":"Polygon","coordinates":[[[-75.57,6.28],[-75.56,6.28],[-75.56,6.27],[-75.57,6.27],[-75.57,6.28]]] }}
+  ]
+}

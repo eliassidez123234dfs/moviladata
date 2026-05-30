@@ -1,0 +1,5 @@
+@import url('https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css');
+html,body,#root{height:100%}
+*{box-sizing:border-box}
+
+.card{padding:8px}

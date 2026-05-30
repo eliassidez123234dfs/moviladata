@@ -19,7 +19,7 @@ class ChatTurn(BaseModel):
 
 class AssistantRequest(BaseModel):
     pregunta: str = Field(..., min_length=1, max_length=1000)
-    historial: Optional[List[ChatTurn]] = []
+    historial: Optional[List[ChatTurn]] = None
 
     @validator('pregunta')
     def sanitize_question(cls, v):
@@ -183,11 +183,12 @@ def assistant(req: AssistantRequest):
     if not question.strip():
         raise HTTPException(status_code=400, detail='La pregunta no puede estar vacía.')
 
+    historial = req.historial or []
     context = build_context()
 
     if os.getenv('OPENAI_API_KEY'):
         try:
-            response = call_openai(question, context, req.historial)
+            response = call_openai(question, context, historial)
             return {
                 'pregunta': question,
                 'respuesta': response,
@@ -199,7 +200,7 @@ def assistant(req: AssistantRequest):
 
     if os.getenv('ANTHROPIC_API_KEY'):
         try:
-            response = call_anthropic(question, context, req.historial)
+            response = call_anthropic(question, context, historial)
             return {
                 'pregunta': question,
                 'respuesta': response,

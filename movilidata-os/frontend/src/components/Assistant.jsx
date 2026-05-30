@@ -27,7 +27,7 @@ export default function Assistant() {
     setLoading(true)
     try {
       const data = await sendAssistant(text)
-      setMessages((prev) => [...prev, { role: 'assistant', text: data.response || 'Lo siento, no pude procesar tu solicitud.' }])
+      setMessages((prev) => [...prev, { role: 'assistant', text: data.respuesta || 'Lo siento, no pude procesar tu solicitud.' }])
     } catch {
       setMessages((prev) => [...prev, { role: 'assistant', text: 'Error al conectar con el servidor. Intenta de nuevo.' }])
     }

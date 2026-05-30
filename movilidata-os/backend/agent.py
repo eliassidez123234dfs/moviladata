@@ -109,8 +109,8 @@ class MovilidataAgent:
         total = kb.get('total_accidentes', 0)
         victimas = kb.get('total_victimas', 0)
         return (
-            f"En Medellín se han registrado **{total:,} accidentes** en el último año, "
-            f"con un total de **{victimas:,} víctimas**. "
+            f"En Medellín se han registrado {total:,} accidentes en el último año, "
+            f"con un total de {victimas:,} víctimas. "
             f"Fuente: Medata / Observatorio de Movilidad de Medellín."
         )
 
@@ -118,7 +118,7 @@ class MovilidataAgent:
         tipos = self.knowledge_base.get('tipos', [])
         if not tipos:
             return "No hay datos de tipos de accidentes disponibles."
-        lineas = '\n'.join([f"  • **{t}**: {c} casos" for t, c in tipos[:5]])
+        lineas = '\n'.join([f"  • {t}: {c} casos" for t, c in tipos[:5]])
         return (
             f"Distribución de accidentes por tipo:\n{lineas}\n"
             f"Fuente: Medata."
@@ -128,12 +128,12 @@ class MovilidataAgent:
         comunas = self.knowledge_base.get('top_comunas', [])
         if not comunas:
             return "No hay datos de comunas disponibles."
-        lineas = '\n'.join([f"  {i+1}. **{c}**: {t} accidentes" for i, (c, t) in enumerate(comunas[:5])])
+        lineas = '\n'.join([f"  {i+1}. {c}: {t} accidentes" for i, (c, t) in enumerate(comunas[:5])])
         riesgo = self.knowledge_base.get('zonas_riesgo', [])
-        riesgo_lineas = '\n'.join([f"  • **{z}**: IR {r:.2f} ({n} accidentes)" for z, r, n in riesgo[:3]]) if riesgo else "  Sin datos de riesgo."
+        riesgo_lineas = '\n'.join([f"  • {z}: IR {r:.2f} ({n} accidentes)" for z, r, n in riesgo[:3]]) if riesgo else "  Sin datos de riesgo."
         return (
-            f"**Top comunas con más accidentes:**\n{lineas}\n\n"
-            f"**Zonas de mayor riesgo:**\n{riesgo_lineas}\n\n"
+            f"Top comunas con más accidentes:\n{lineas}\n\n"
+            f"Zonas de mayor riesgo:\n{riesgo_lineas}\n\n"
             f"Fuente: Medata."
         )
 
@@ -142,7 +142,7 @@ class MovilidataAgent:
         if not severidad:
             return "No hay datos de gravedad disponibles."
         mapa = {'1': 'Leve', '2': 'Moderado', '3': 'Grave'}
-        lineas = '\n'.join([f"  • **{mapa.get(k, k)}**: {v} casos" for k, v in sorted(severidad.items())])
+        lineas = '\n'.join([f"  • {mapa.get(k, k)}: {v} casos" for k, v in sorted(severidad.items())])
         return (
             f"Distribución por gravedad:\n{lineas}\n"
             f"Fuente: Medata."
@@ -156,10 +156,10 @@ class MovilidataAgent:
         estado = 'congestión crítica' if congestionadas > 5 else ('congestión moderada' if congestionadas > 2 else 'flujo normal')
         return (
             f"Estado del tráfico actual en Medellín:\n"
-            f"  • **{vias}** vías monitoreadas\n"
-            f"  • Velocidad promedio: **{velocidad} km/h**\n"
-            f"  • Vías congestionadas: **{congestionadas}**\n"
-            f"  • Estado general: **{estado}**\n"
+            f"  • {vias} vías monitoreadas\n"
+            f"  • Velocidad promedio: {velocidad} km/h\n"
+            f"  • Vías congestionadas: {congestionadas}\n"
+            f"  • Estado general: {estado}\n"
             f"Fuente: SIM / Observatorio de Movilidad."
         )
 
@@ -170,14 +170,14 @@ class MovilidataAgent:
         temp = clima.get('temperatura', 0)
         advertencia = ''
         if precip > 8:
-            advertencia = '\n  ⚠️ **Precaución**: Lluvia intensa. Evita zonas inundables.'
+            advertencia = '\n  ⚠️ Precaución: lluvia intensa. Evita zonas inundables.'
         elif precip > 2:
             advertencia = '\n  🌧️ Lluvia moderada. Conduce con cuidado.'
         return (
             f"Condiciones climáticas actuales en Medellín:\n"
-            f"  • Intensidad: **{intensidad}**\n"
-            f"  • Precipitación: **{precip} mm/h**\n"
-            f"  • Temperatura: **{temp}°C**{advertencia}\n"
+            f"  • Intensidad: {intensidad}\n"
+            f"  • Precipitación: {precip} mm/h\n"
+            f"  • Temperatura: {temp}°C{advertencia}\n"
             f"Fuente: SIATA."
         )
 
@@ -186,8 +186,8 @@ class MovilidataAgent:
         if alertas == 0:
             return "✅ No hay alertas activas en este momento. La movilidad está en condiciones normales."
         return (
-            f"⚠️ Hay **{alertas} alerta(s) activa(s)** en el sistema.\n"
-            f"Revisa el panel de Alertas para más detalles.\n"
+            f"⚠️ Hay {alertas} alerta(s) activas en el sistema.\n"
+            f"Revisa el panel de alertas para más detalles.\n"
             f"Fuente: Sistema de monitoreo Movilidata OS."
         )
 
@@ -196,19 +196,19 @@ class MovilidataAgent:
         if not zonas:
             return "No hay datos de zonas de riesgo disponibles."
         lineas = '\n'.join([
-            f"  {i+1}. **{z}**: IR {r:.2f} ({n} accidentes)" +
+            f"  {i+1}. {z}: IR {r:.2f} ({n} accidentes)" +
             (' ⚠️ CRÍTICO' if r > 0.7 else '')
             for i, (z, r, n) in enumerate(zonas[:5])
         ])
         return (
-            f"**Ranking de zonas críticas por índice de riesgo:**\n{lineas}\n\n"
+            f"Ranking de zonas críticas por índice de riesgo:\n{lineas}\n\n"
             f"IR (Índice de Riesgo) > 0.7 es crítico. Fuente: Medata."
         )
 
     def _responder_ruta_segura(self):
         return (
             "Para calcular una ruta segura:\n"
-            "  1. Ve al módulo **Rutas Seguras**\n"
+            "  1. Ve al módulo Rutas Seguras\n"
             "  2. Ingresa tu origen y destino en coordenadas\n"
             "  3. El sistema trazará una ruta evitando zonas de alto riesgo\n\n"
             "Recomendación: En época de lluvias, evita las zonas con historial de inundaciones "
@@ -217,7 +217,7 @@ class MovilidataAgent:
 
     def _responder_saludar(self):
         return (
-            "¡Hola! Soy el asistente de movilidad de **Medellín Movilidata OS** 🚗\n\n"
+            "¡Hola! Soy el asistente de movilidad de Medellín Movilidata OS 🚗\n\n"
             "Puedo ayudarte con:\n"
             "  • Estadísticas de accidentes viales\n"
             "  • Estado del tráfico en tiempo real\n"
@@ -234,12 +234,12 @@ class MovilidataAgent:
         clima = kb.get('clima', {})
         alertas = kb.get('alertas_activas', 0)
         return (
-            f"**Resumen de movilidad en Medellín:**\n\n"
-            f"🚗 **Tráfico**: {kb.get('total_vias', 0)} vías monitoreadas, velocidad promedio {velocidad} km/h, "
+            f"Resumen de movilidad en Medellín:\n\n"
+            f"🚗 Tráfico: {kb.get('total_vias', 0)} vías monitoreadas, velocidad promedio {velocidad} km/h, "
             f"{kb.get('vias_congestionadas', 0)} congestionadas.\n"
-            f"🚦 **Accidentes**: {total:,} registrados en el último año.\n"
-            f"🌧️ **Clima**: {clima.get('intensidad', 'sin datos')} ({clima.get('precipitacion', 0)} mm/h).\n"
-            f"⚠️ **Alertas**: {alertas} activa(s).\n\n"
+            f"🚦 Accidentes: {total:,} registrados en el último año.\n"
+            f"🌧️ Clima: {clima.get('intensidad', 'sin datos')} ({clima.get('precipitacion', 0)} mm/h).\n"
+            f"⚠️ Alertas: {alertas} activa(s).\n\n"
             f"Puedes preguntarme por temas específicos como accidentes por comuna, "
             f"tráfico actual, rutas seguras, o condiciones climáticas. "
             f"Fuentes: Medata, SIATA, SIM, Observatorio de Movilidad."

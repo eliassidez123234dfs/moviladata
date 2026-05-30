@@ -21,6 +21,13 @@ function PredictionHeatLayer({ points }) {
   return null
 }
 
+function formatModelName(name) {
+  if (!name) return 'N/A'
+  return name
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 export default function Prediction() {
   const dispatch = useDispatch()
   const { data, fecha, hora, loading, error } = useSelector((state) => state.prediction)
@@ -132,7 +139,7 @@ export default function Prediction() {
             />
             <MetricCard
               label="Modelo"
-              value={data.model_info?.nombre ?? 'N/A'}
+              value={formatModelName(data.model_info?.nombre ?? 'N/A')}
               icon="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"
               color="primary"
             />

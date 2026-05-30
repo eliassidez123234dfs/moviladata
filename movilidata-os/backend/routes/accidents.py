@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from models import Accident
@@ -9,7 +10,7 @@ import csv, json
 
 router = APIRouter()
 
-DB_URL = 'sqlite:///./movilidata.db'
+DB_URL = os.getenv('DATABASE_URL', 'sqlite:///./movilidata.db')
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
 

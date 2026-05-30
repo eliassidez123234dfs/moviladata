@@ -19,15 +19,15 @@ const uiSlice = createSlice({
     addNotification: (state, action) => {
       const id = Date.now()
       state.notifications.push({ id, ...action.payload })
-      setTimeout(() => {
-        state.notifications = state.notifications.filter(n => n.id !== id)
-      }, 5000)
     },
     removeNotification: (state, action) => {
       state.notifications = state.notifications.filter(n => n.id !== action.payload)
+    },
+    clearNotifications: (state) => {
+      state.notifications = []
     }
   }
 })
 
-export const { setActiveTab, setOfflineMode, toggleDarkMode, toggleSidebar, addNotification, removeNotification } = uiSlice.actions
+export const { setActiveTab, setOfflineMode, toggleDarkMode, toggleSidebar, addNotification, removeNotification, clearNotifications } = uiSlice.actions
 export default uiSlice.reducer

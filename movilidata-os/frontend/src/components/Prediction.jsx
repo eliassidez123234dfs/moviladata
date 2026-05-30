@@ -76,8 +76,8 @@ export default function Prediction() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-surface-900">Predicción de congestión</h2>
-          <p className="text-sm text-surface-500">Pronóstico con 2-4h de antelación usando modelo SARIMA</p>
+          <h2 className="text-lg font-semibold neon-text">Predicción de congestión</h2>
+          <p className="text-sm" style={{ color: 'rgba(241, 245, 249, 0.5)' }}>Pronóstico con 2-4h de antelación usando modelo SARIMA</p>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={handleConsult} disabled={loading} className="btn-primary">

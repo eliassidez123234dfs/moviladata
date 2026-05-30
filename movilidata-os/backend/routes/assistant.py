@@ -4,6 +4,7 @@ from datetime import datetime
 import os, re, requests, json
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from agent import MovilidataAgent
 
 router = APIRouter()
 
@@ -146,24 +147,44 @@ def fallback_answer(question, context):
 @router.post('/api/assistant')
 def assistant(req: AssistantRequest):
     question = req.pregunta
-    context = build_context()
-    context_str = context['resumen']
-    try:
-        if os.getenv('OPENAI_API_KEY'):
+    if os.getenv('OPENAI_API_KEY'):
+        context = build_context()
+        context_str = context['resumen']
+        try:
             response = call_openai(question, context_str)
             provider = 'OpenAI'
-        elif os.getenv('ANTHROPIC_API_KEY'):
+        except Exception as e:
+            return _agent_response(question, f"OpenAI falló: {e}")
+    elif os.getenv('ANTHROPIC_API_KEY'):
+        context = build_context()
+        context_str = context['resumen']
+        try:
             response = call_anthropic(question, context_str)
             provider = 'Anthropic'
-        else:
-            response = fallback_answer(question, context)
-            provider = 'fallback'
-    except Exception:
-        response = fallback_answer(question, context)
-        provider = 'fallback'
+        except Exception as e:
+            return _agent_response(question, f"Anthropic falló: {e}")
+    else:
+        agent = MovilidataAgent()
+        result = agent.answer(question)
+        return {
+            'pregunta': question,
+            'respuesta': result['respuesta'],
+            'proveedor': result['proveedor'],
+            'timestamp': datetime.utcnow().isoformat()
+        }
     return {
         'pregunta': question,
         'respuesta': response,
         'proveedor': provider,
+        'timestamp': datetime.utcnow().isoformat()
+    }
+
+def _agent_response(question, error_msg):
+    agent = MovilidataAgent()
+    result = agent.answer(question)
+    return {
+        'pregunta': question,
+        'respuesta': f"{result['respuesta']}\n\n(Nota: {error_msg})",
+        'proveedor': result['proveedor'],
         'timestamp': datetime.utcnow().isoformat()
     }

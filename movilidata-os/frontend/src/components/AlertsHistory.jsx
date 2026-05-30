@@ -28,10 +28,10 @@ export default function AlertsHistory() {
         <div className="card p-8 text-center text-sm text-surface-500">Cargando historial...</div>
       ) : history.length === 0 ? (
         <div className="card p-8 text-center">
-          <svg className="mx-auto h-10 w-10 text-surface-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <svg className="mx-auto h-10 w-10" style={{ color: 'rgba(0, 255, 255, 0.3)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="mt-3 text-sm text-surface-500">No hay alertas registradas</p>
+          <p className="mt-3 text-sm" style={{ color: 'rgba(241, 245, 249, 0.4)' }}>No hay alertas registradas</p>
         </div>
       ) : (
         <div className="space-y-2">

@@ -1,10 +1,13 @@
 import os, sys, logging
 from datetime import datetime
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -14,7 +17,8 @@ from apscheduler.triggers.cron import CronTrigger
 from models import Base, Accident, SegmentoVial, ZonaRiesgo, PrediccionCongestion, CondicionClimatica, Alerta
 from ingestion import (
     load_accidents_to_db, ingest_trafico, ingest_clima,
-    calcular_prediccion, actualizar_zonas_riesgo, desactivar_alertas_antiguas
+    calcular_prediccion, actualizar_zonas_riesgo, desactivar_alertas_antiguas,
+    ingest_new_accidents
 )
 from scraper import run_scraper
 
@@ -28,6 +32,32 @@ logger = logging.getLogger('movilidata')
 DB_URL = os.getenv('DATABASE_URL', 'sqlite:///./movilidata.db')
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
+
+def datasource_sync():
+    from providers.base import ProviderStatus
+    try:
+        from models import DataSource
+        from datetime import datetime
+        s = SessionLocal()
+        try:
+            for p_name, p_type in [
+                ('weather', 'api_open_meteo'),
+                ('traffic', 'api_sim'),
+                ('accidents', 'api_arcgis'),
+                ('route', 'api_osrm'),
+            ]:
+                existing = s.query(DataSource).filter_by(nombre=p_name).first()
+                if not existing:
+                    ds = DataSource(nombre=p_name, tipo=p_type, estado='registered',
+                                    ultima_actualizacion=datetime.utcnow())
+                    s.add(ds)
+            s.commit()
+        finally:
+            s.close()
+    except Exception as e:
+        logger.warning(f"datasource_sync: {e}")
 
 scheduler = BackgroundScheduler(daemon=True)
 
@@ -54,6 +84,7 @@ def add_scheduler_jobs():
         (scrape_wrapper, IntervalTrigger(minutes=interval), 'scraper'),
         (desactivar_alertas_wrapper, IntervalTrigger(minutes=60), 'limpiar_alertas'),
         (actualizar_zonas_wrapper, CronTrigger(hour=3, minute=0), 'accidentes_diarios'),
+        (ingest_accidentes_wrapper, IntervalTrigger(minutes=30), 'ingesta_accidentes'),
     ]
     for fn, trigger, job_id in jobs:
         try:
@@ -86,6 +117,18 @@ def actualizar_zonas_wrapper():
 def desactivar_alertas_wrapper():
     _with_session(desactivar_alertas_antiguas, Alerta)
 
+def ingest_accidentes_wrapper():
+    s = SessionLocal()
+    try:
+        nuevos = ingest_new_accidents(s, Accident, Alerta, batch_size=5)
+        if nuevos > 0:
+            logger.info(f"{nuevos} nuevos accidentes generados")
+            actualizar_zonas_riesgo(s, Accident, ZonaRiesgo, Alerta)
+    except Exception as e:
+        logger.error(f"Error ingesta accidentes: {e}")
+    finally:
+        s.close()
+
 def scrape_wrapper():
     logger.info("Ejecutando scrape programado...")
     try:
@@ -107,6 +150,13 @@ async def lifespan(app_fastapi):
 
     try:
         create_db()
+        datasource_sync()
+        s = SessionLocal()
+        if s.query(ZonaRiesgo).count() == 0:
+            logger.info("Calculando zonas de riesgo iniciales...")
+            actualizar_zonas_riesgo(s, Accident, ZonaRiesgo, Alerta)
+            logger.info("Zonas de riesgo calculadas correctamente")
+        s.close()
     except Exception as e:
         logger.error(f"Error BD inicial: {e}")
         raise
@@ -119,6 +169,8 @@ async def lifespan(app_fastapi):
 
 app = FastAPI(title='Movilidata OS', version='1.1.0', lifespan=lifespan,
               docs_url='/docs', redoc_url='/redoc')
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     TrustedHostMiddleware,
@@ -135,7 +187,7 @@ app.add_middleware(
     max_age=3600
 )
 
-from routes import accidents, traffic, weather, safe_route, alerts, prediction, assistant, export, zonas_riesgo
+from routes import accidents, traffic, weather, safe_route, alerts, prediction, assistant, export, zonas_riesgo, datasources, geocode
 
 app.include_router(accidents.router)
 app.include_router(traffic.router)
@@ -146,6 +198,8 @@ app.include_router(prediction.router)
 app.include_router(assistant.router)
 app.include_router(export.router)
 app.include_router(zonas_riesgo.router)
+app.include_router(datasources.router)
+app.include_router(geocode.router)
 
 @app.post('/api/scrape')
 def trigger_scrape():

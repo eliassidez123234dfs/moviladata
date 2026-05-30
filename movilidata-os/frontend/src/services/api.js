@@ -80,4 +80,15 @@ export async function exportModule(modulo) {
   URL.revokeObjectURL(url)
 }
 
+export async function searchAddress(query) {
+  if (!query || query.length < 3) return []
+  const resp = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`)
+  return handleResponse(resp)
+}
+
+export async function reverseGeocode(lat, lon) {
+  const resp = await fetch(`/api/geocode/reverse?lat=${lat}&lon=${lon}`)
+  return handleResponse(resp)
+}
+
 export { apiClient }

@@ -363,6 +363,60 @@ def actualizar_zonas_riesgo(session, Accident, ZonaRiesgo, Alerta):
 
     session.commit()
 
+def ingest_new_accidents(session, Accident, Alerta, batch_size=10):
+    now = datetime.utcnow()
+    try:
+        from scraper import DataCollector
+        collector = DataCollector()
+        scraped = collector.scrape_medata_accidents(page=1)
+        if scraped:
+            existing_ids = set()
+            last = session.query(Accident).order_by(Accident.fecha.desc()).limit(5).all()
+            for e in last:
+                existing_ids.add((e.lat, e.lon, str(e.fecha)[:16]))
+            nuevos = 0
+            for a in scraped:
+                key = (a['lat'], a['lon'], str(a['fecha'])[:16])
+                if key not in existing_ids:
+                    session.add(Accident(
+                        fecha=a['fecha'], tipo=a['tipo'], gravedad=a['gravedad'],
+                        lat=a['lat'], lon=a['lon'], comuna=a['comuna'],
+                        victimas=a['victimas'], fuente=a.get('fuente', 'Medata')
+                    ))
+                    nuevos += 1
+            if nuevos:
+                session.commit()
+                print(f"[Ingestion] {nuevos} nuevos accidentes desde Medata API")
+            return nuevos
+    except Exception as e:
+        print(f"[Ingestion] Medata API no disponible para ingesta periódica: {e}")
+
+    hour = now.hour
+    tipos = ['Choque', 'Atropello', 'Caída', 'Volcamiento']
+    for _ in range(batch_size):
+        dt = now - timedelta(minutes=random.randint(1, 30))
+        lat = round(random.uniform(MIN_LAT, MAX_LAT), 6)
+        lon = round(random.uniform(MIN_LON, MAX_LON), 6)
+        gravedad = random.choices([1, 2, 3], weights=[70, 25, 5])[0]
+        victimas = 0 if gravedad == 1 else random.randint(1, 3)
+        session.add(Accident(
+            fecha=dt.strftime('%Y-%m-%d %H:%M:%S'),
+            tipo=random.choice(tipos),
+            gravedad=gravedad,
+            lat=lat, lon=lon,
+            comuna=random.choice(COMUNAS),
+            victimas=victimas,
+            fuente='Medata (simulado tiempo real)'
+        ))
+
+    nuevos = session.query(Accident).filter(
+        Accident.fuente.like('%tiempo real')
+    ).order_by(Accident.fecha.desc()).limit(batch_size).count()
+
+    session.commit()
+    print(f"[Ingestion] {batch_size} nuevos accidentes simulados generados ({nuevos} existentes)")
+    return batch_size
+
 def desactivar_alertas_antiguas(session, Alerta):
     cutoff = datetime.utcnow() - timedelta(hours=24)
     session.query(Alerta).filter(

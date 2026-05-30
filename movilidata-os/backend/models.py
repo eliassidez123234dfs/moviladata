@@ -74,3 +74,17 @@ class Alerta(Base):
     severidad = Column(String, default='media')
     descripcion = Column(Text)
     activa = Column(Boolean, default=True)
+
+class DataSource(Base):
+    __tablename__ = 'datasources'
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, unique=True, index=True)
+    tipo = Column(String)
+    estado = Column(String, default='unknown')
+    ultima_exitosa = Column(DateTime, nullable=True)
+    ultimo_error = Column(DateTime, nullable=True)
+    errores_consecutivos = Column(Integer, default=0)
+    total_errores = Column(Integer, default=0)
+    tiempo_respuesta_promedio_ms = Column(Float, default=0.0)
+    muestras_respuesta = Column(Integer, default=0)
+    ultima_actualizacion = Column(DateTime, default=func.now)

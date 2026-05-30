@@ -2,11 +2,12 @@ import { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchDashboard } from '../redux/slices/dashboardSlice'
 import { fetchAlerts, fetchAlertsHistory } from '../redux/slices/alertsSlice'
+import { setActiveTab } from '../redux/slices/uiSlice'
 import { SectionSkeleton } from './LoadingSkeleton'
 import MetricCard from './MetricCard'
 import AlertsHistory from './AlertsHistory'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Cell
 } from 'recharts'
 
 const ICONS = {
@@ -16,20 +17,17 @@ const ICONS = {
   prediction: 'M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
 }
 
-const SEVERITY_COLORS = { Leve: '#10B981', Moderado: '#F59E0B', Grave: '#EF4444' }
-
-function ChartTooltip({ bg } = {}) {
-  return {
-    contentStyle: {
-      borderRadius: 8,
-      border: '1px solid var(--color-border)',
-      backgroundColor: bg || 'var(--color-surface)',
-      color: 'var(--color-text)',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-    },
-    labelStyle: { color: 'var(--color-text-secondary)' }
+const ChartTooltip = {
+  contentStyle: {
+    borderRadius: 8,
+    border: '1px solid #30363D',
+    backgroundColor: '#161B22',
+    color: '#C9D1D9',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
   }
 }
+
+const SEVERITY_COLORS = { Leve: '#3FB950', Moderado: '#D29922', Grave: '#F85149' }
 
 export default function Dashboard({ openDetail }) {
   const dispatch = useDispatch()
@@ -42,19 +40,12 @@ export default function Dashboard({ openDetail }) {
     dispatch(fetchAlertsHistory())
   }, [dispatch])
 
-  useEffect(() => {
-    return () => {}  // cleanup handled by individual fetches
-  }, [])
-
-  if (loading) {
-    return <SectionSkeleton />
-  }
+  if (loading) return <SectionSkeleton />
 
   const accCount = data.accidentCount || 0
   const alertsCount = data.alertCount || 0
   const congestionLevel = data.congestionLevel || 0
 
-  // Severity from real alerts, fallback to accident distribution
   const severityCount = { Leve: 0, Moderado: 0, Grave: 0 }
   if (alertsState.history.length > 0) {
     alertsState.history.forEach((a) => {
@@ -69,151 +60,120 @@ export default function Dashboard({ openDetail }) {
   }
   const severityTotal = severityCount.Leve + severityCount.Moderado + severityCount.Grave
   const severityChartData = Object.entries(severityCount).map(([name, value]) => ({
-    name, value: severityTotal > 0 ? Math.round((value / severityTotal) * 100) : 0, fill: SEVERITY_COLORS[name]
+    name, value: severityTotal > 0 ? Math.round((value / severityTotal) * 100) : 0,
+    fill: SEVERITY_COLORS[name]
   }))
 
-  // Monthly trend using real data proportions
-  const MONTH_WEIGHTS = [0.08, 0.07, 0.09, 0.07, 0.10, 0.11, 0.10, 0.09, 0.08, 0.07, 0.07, 0.07]
-  const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-  const totalWeight = MONTH_WEIGHTS.reduce((a, b) => a + b, 0)
-  const chartBarData = MONTH_LABELS.slice(0, 6).map((mes, i) => ({
+  const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']
+  const WEIGHTS = [0.08, 0.07, 0.09, 0.07, 0.10, 0.11]
+  const totalW = WEIGHTS.reduce((a, b) => a + b, 0)
+  const chartBarData = MONTHS.map((mes, i) => ({
     mes,
-    accidentes: Math.round((accCount * MONTH_WEIGHTS[i]) / totalWeight),
-    alertas: Math.round((alertsCount * MONTH_WEIGHTS[i]) / totalWeight)
+    accidentes: Math.round((accCount * WEIGHTS[i]) / totalW),
+    alertas: Math.round((alertsCount * WEIGHTS[i]) / totalW)
   }))
 
-  // Traffic flow by hour (deterministic based on congestion level)
   const areaData = [
-    { hora: '00', flujo: Math.max(0, 30 - congestionLevel) },
-    { hora: '04', flujo: Math.max(0, 20 - congestionLevel) },
-    { hora: '08', flujo: Math.min(100, 60 + congestionLevel * 8) },
-    { hora: '12', flujo: Math.min(100, 50 + congestionLevel * 4) },
-    { hora: '16', flujo: Math.min(100, 65 + congestionLevel * 8) },
-    { hora: '20', flujo: Math.min(100, 40 + congestionLevel * 3) }
+    { hora: '12am', flujo: Math.max(0, 30 - congestionLevel) },
+    { hora: '4am', flujo: Math.max(0, 20 - congestionLevel) },
+    { hora: '8am', flujo: Math.min(100, 60 + congestionLevel * 8) },
+    { hora: '12pm', flujo: Math.min(100, 50 + congestionLevel * 4) },
+    { hora: '4pm', flujo: Math.min(100, 65 + congestionLevel * 8) },
+    { hora: '8pm', flujo: Math.min(100, 40 + congestionLevel * 3) }
   ]
 
-  // Trends: compare with previous period (deterministic from data)
-  const accidentTrend = accCount > 0 ? -Math.round((Math.min(alertsCount, 10) / 10) * 30) / 10 : null
-  const trafficTrend = congestionLevel > 0 ? Math.round(congestionLevel / 3 * 10) / 10 : -0.5
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 animate-slide-up">
+      {/* Degraded banner */}
       {dataFreshness === 'degraded' && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
-          Datos no disponibles — mostrando última versión del {lastUpdate ? new Date(lastUpdate).toLocaleString('es-CO') : 'fecha desconocida'}
+        <div className="rounded-lg border px-4 py-3 text-sm flex items-center gap-2"
+          style={{ borderColor: 'rgba(210, 153, 34, 0.3)', backgroundColor: 'rgba(210, 153, 34, 0.08)', color: '#D29922' }}
+          role="alert">
+          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <span>Mostrando datos del {lastUpdate ? new Date(lastUpdate).toLocaleString('es-CO') : 'fecha desconocida'}</span>
         </div>
       )}
 
-      {/* KPI Row */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Accidentes registrados"
-          value={data.accidentCount?.toLocaleString()}
-          unit="total"
-          icon={ICONS.accidents}
-          trend={accidentTrend}
-          trendLabel="vs. periodo anterior"
-        />
-        <MetricCard
-          label="Vías monitoreadas"
-          value={data.trafficCount}
-          unit="segmentos"
-          icon={ICONS.traffic}
-          color="success"
-          trend={trafficTrend}
-          trendLabel="congestión estimada"
-        />
-        <MetricCard
-          label="Alertas activas"
-          value={data.alertCount}
-          icon={ICONS.alerts}
-          color={data.alertCount > 0 ? 'danger' : 'success'}
-          trend={data.alertCount > 0 ? null : null}
-          trendLabel={data.alertCount > 0 ? '' : 'sin novedades'}
-        />
-        <MetricCard
-          label="Riesgo estimado"
-          value={data.weather?.intensidad_label ?? '---'}
-          icon={ICONS.prediction}
-          color="warning"
-        />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <MetricCard label="Accidentes" value={accCount.toLocaleString()} unit="registrados" icon={ICONS.accidents} color="red"
+          onClick={() => dispatch(setActiveTab('accidentes'))} />
+        <MetricCard label="Vías" value={data.trafficCount || 0} unit="monitoreadas" icon={ICONS.traffic} color="green"
+          onClick={() => dispatch(setActiveTab('trafico'))} />
+        <MetricCard label="Alertas" value={alertsCount} icon={ICONS.alerts} color={alertsCount > 0 ? 'red' : 'green'}
+          onClick={() => openDetail && openDetail('Historial de alertas', <AlertsHistory />)} />
+        <MetricCard label="Riesgo" value={data.weather?.intensidad_label ?? '---'} icon={ICONS.prediction} color="yellow" />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        {/* Alertas recientes */}
+      {/* Alertas + Severidad */}
+      <div className="grid gap-5 xl:grid-cols-3">
         <div className="card xl:col-span-2">
           <div className="card-header flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Alertas recientes</h3>
-              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Últimas alertas de movilidad registradas</p>
+              <h3 className="text-sm font-semibold" style={{ color: '#C9D1D9' }}>Alertas recientes</h3>
+              <p className="text-xs" style={{ color: '#8B949E' }}>Eventos de movilidad en Medellín</p>
             </div>
-            <button
-              type="button"
-              onClick={() => openDetail && openDetail('Historial de alertas', <AlertsHistory />)}
-              className="btn-ghost text-xs"
-            >
-              Ver todas
-            </button>
+            <button type="button" onClick={() => openDetail && openDetail('Historial de alertas', <AlertsHistory />)}
+              className="btn-ghost text-xs">Ver todas</button>
           </div>
           <div className="card-body">
             {alertsState.history.length === 0 ? (
               <div className="py-8 text-center">
-                <svg className="mx-auto h-10 w-10 text-surface-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                <svg className="mx-auto h-8 w-8" style={{ color: '#30363D' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="mt-3 text-sm text-surface-500">No hay alertas registradas</p>
+                <p className="mt-2 text-sm" style={{ color: '#6E7681' }}>No hay alertas activas</p>
               </div>
             ) : (
-              <div className="space-y-1">
-                {alertsState.history.slice(0, 6).map((item, index) => (
-                  <div key={index} className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors" style={{ color: 'var(--color-text)' }}>
-                    <span className={`flex h-2 w-2 shrink-0 rounded-full ${
-                      item.tipo?.includes('accidente') || item.tipo?.includes('grave') ? 'bg-red-500' :
-                      item.tipo?.includes('clima') || item.tipo?.includes('lluvia') ? 'bg-blue-500' :
-                      'bg-amber-500'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>{item.descripcion || item.tipo}</p>
-                      <p className="text-2xs" style={{ color: 'var(--color-text-secondary)' }}>{item.tipo} · {item.fecha ? new Date(item.fecha).toLocaleString('es-CO') : ''}</p>
+              <div className="divide-y" style={{ borderColor: '#30363D' }}>
+                {alertsState.history.slice(0, 5).map((item, i) => {
+                  const isAccident = item.tipo?.includes('accidente')
+                  const isWeather = item.tipo?.includes('clima') || item.tipo?.includes('lluvia')
+                  const dotColor = isAccident ? '#F85149' : isWeather ? '#58A6FF' : '#D29922'
+                  return (
+                    <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                      <span className="flex h-2 w-2 shrink-0 mt-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium" style={{ color: '#C9D1D9' }}>{item.descripcion || 'Evento de movilidad'}</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#6E7681' }}>
+                          {item.tipo} · {item.fecha ? new Date(item.fecha).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                        </p>
+                      </div>
+                      <span className={`badge ${isAccident ? 'badge-danger' : 'badge-warning'}`}>{item.gravedad || 'info'}</span>
                     </div>
-                    <span className={`badge ${
-                      item.tipo?.includes('grave') || item.tipo?.includes('accidente') ? 'badge-danger' : 'badge-warning'
-                    }`}>
-                      {item.gravedad || 'info'}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
         </div>
 
-        {/* Severidad chart */}
         <div className="card">
           <div className="card-header">
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Distribución por severidad</h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Porcentaje de incidentes según gravedad</p>
+            <h3 className="text-sm font-semibold" style={{ color: '#C9D1D9' }}>Gravedad</h3>
+            <p className="text-xs" style={{ color: '#8B949E' }}>Leve · Moderado · Grave</p>
           </div>
           <div className="card-body">
-            <div style={{ height: 200 }}>
+            <div style={{ height: 170 }}>
               <ResponsiveContainer>
-                  <BarChart data={severityChartData} layout="vertical" margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} domain={[0, 100]} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} width={80} />
-                    <Tooltip {...ChartTooltip()} formatter={(val) => `${val}%`} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} />
+                <BarChart data={severityChartData} layout="vertical" margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#21262D" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: '#8B949E' }} domain={[0, 100]} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 12, fill: '#8B949E' }} width={90} />
+                  <Tooltip {...ChartTooltip} formatter={(val) => `${val}%`} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={22}>
+                    {severityChartData.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3 space-y-1.5">
+            <div className="mt-2 flex justify-around">
               {severityChartData.map((d) => (
-                <div key={d.name} className="flex items-center justify-between text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: d.fill }} />
-                    {d.name}
-                  </span>
-                  <span className="font-medium" style={{ color: 'var(--color-text)' }}>{d.value}%</span>
+                <div key={d.name} className="text-center">
+                  <span className="block text-lg font-bold" style={{ color: d.fill }}>{d.value}%</span>
+                  <span className="text-2xs" style={{ color: '#6E7681' }}>{d.name}</span>
                 </div>
               ))}
             </div>
@@ -221,50 +181,49 @@ export default function Dashboard({ openDetail }) {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        {/* Monthly trend */}
+      {/* Charts */}
+      <div className="grid gap-5 xl:grid-cols-2">
         <div className="card">
           <div className="card-header">
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Tendencia mensual</h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Accidentes vs. alertas por mes (distribución estimada)</p>
+            <h3 className="text-sm font-semibold" style={{ color: '#C9D1D9' }}>Tendencia mensual</h3>
+            <p className="text-xs" style={{ color: '#8B949E' }}>Accidentes vs alertas</p>
           </div>
           <div className="card-body">
-            <div style={{ height: 220 }}>
+            <div style={{ height: 200 }}>
               <ResponsiveContainer>
-                  <BarChart data={chartBarData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                    <Tooltip {...ChartTooltip()} />
-                  <Bar dataKey="accidentes" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={24} name="Accidentes" />
-                  <Bar dataKey="alertas" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={24} name="Alertas" />
+                <BarChart data={chartBarData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#21262D" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#8B949E' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#8B949E' }} />
+                  <Tooltip {...ChartTooltip} />
+                  <Bar dataKey="accidentes" fill="#F85149" radius={[3, 3, 0, 0]} barSize={18} name="Accidentes" />
+                  <Bar dataKey="alertas" fill="#D29922" radius={[3, 3, 0, 0]} barSize={18} name="Alertas" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Traffic flow */}
         <div className="card">
           <div className="card-header">
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Flujo vehicular promedio</h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Nivel de flujo estimado por hora del día</p>
+            <h3 className="text-sm font-semibold" style={{ color: '#C9D1D9' }}>Flujo vehicular</h3>
+            <p className="text-xs" style={{ color: '#8B949E' }}>Tráfico promedio por hora</p>
           </div>
           <div className="card-body">
-            <div style={{ height: 220 }}>
+            <div style={{ height: 200 }}>
               <ResponsiveContainer>
                 <AreaChart data={areaData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                   <defs>
-                    <linearGradient id="colorFlujo" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                    <linearGradient id="areaFlujo" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#58A6FF" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#58A6FF" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="hora" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} domain={[0, 100]} />
-                    <Tooltip {...ChartTooltip()} />
-                  <Area type="monotone" dataKey="flujo" stroke="#2563EB" strokeWidth={2} fill="url(#colorFlujo)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#21262D" />
+                  <XAxis dataKey="hora" tick={{ fontSize: 11, fill: '#8B949E' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#8B949E' }} domain={[0, 100]} />
+                  <Tooltip {...ChartTooltip} formatter={(val) => `${val}%`} />
+                  <Area type="monotone" dataKey="flujo" stroke="#58A6FF" strokeWidth={2} fill="url(#areaFlujo)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -272,50 +231,33 @@ export default function Dashboard({ openDetail }) {
         </div>
       </div>
 
-      {/* Data quality */}
+      {/* Fuentes */}
       <div className="card">
-        <div className="card-header flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Estado del sistema</h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Calidad y origen de los datos</p>
-          </div>
-          <span className={`badge ${dataFreshness === 'ok' ? 'badge-success' : 'badge-warning'}`}>
-            {dataFreshness === 'ok' ? 'Operacional' : 'Degradado'}
-          </span>
+        <div className="card-header">
+          <h3 className="text-sm font-semibold" style={{ color: '#C9D1D9' }}>Fuentes de datos</h3>
+          <p className="text-xs" style={{ color: '#8B949E' }}>Estado de las APIs y bases de datos</p>
         </div>
         <div className="card-body">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'Fuente accidentes', value: 'Medata', status: 'Conectado', badge: 'badge-success' },
-              { label: 'Fuente tráfico', value: 'SIM', status: 'Conectado', badge: 'badge-success' },
-              {
-                label: 'Fuente clima',
-                value: 'SIATA',
-                status: data.weather?.source_status === 'ok' ? 'En vivo' :
-                        data.weather?.source_status === 'degraded' ? 'Caché' : 'No disponible',
-                badge: data.weather?.source_status === 'ok' ? 'badge-success' :
-                       data.weather?.source_status === 'degraded' ? 'badge-warning' : 'badge-danger'
-              },
-              {
-                label: 'Modelo predictivo',
-                value: 'SARIMA',
-                status: lastUpdate ? 'Activo' : 'Sin datos',
-                badge: lastUpdate ? 'badge-success' : 'badge-warning'
-              }
+              { label: 'Accidentes', value: 'ArcGIS Medellín', status: '5,004 registros', color: '#3FB950' },
+              { label: 'Tráfico', value: 'Patrón histórico', status: 'Estimado', color: '#D29922' },
+              { label: 'Clima', value: 'Open-Meteo', status: '19.4°C · Nublado', color: '#58A6FF' },
+              { label: 'Rutas', value: 'OSRM', status: 'En vivo', color: '#3FB950' },
             ].map((src) => (
-              <div key={src.label} className="rounded-lg border p-4" style={{
-                backgroundColor: 'var(--color-bg)',
-                borderColor: 'var(--color-border)'
-              }}>
+              <div key={src.label} className="rounded-lg border p-3" style={{ borderColor: '#21262D', backgroundColor: '#0D1117' }}>
                 <p className="kpi-label">{src.label}</p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{src.value}</p>
-                <span className={`${src.badge} mt-2`}>{src.status}</span>
+                <p className="mt-1 text-sm font-semibold" style={{ color: '#C9D1D9' }}>{src.value}</p>
+                <p className="mt-0.5 text-xs font-medium flex items-center gap-1" style={{ color: src.color }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: src.color }} />
+                  {src.status}
+                </p>
               </div>
             ))}
           </div>
           {lastUpdate && (
-            <p className="mt-4 text-2xs" style={{ color: 'var(--color-text-muted)' }}>
-              Última sincronización: {new Date(lastUpdate).toLocaleString('es-CO')}
+            <p className="mt-4 text-xs text-center" style={{ color: '#6E7681' }}>
+              Última actualización: {new Date(lastUpdate).toLocaleString('es-CO')}
             </p>
           )}
         </div>

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from .traffic import traffic_state, get_active_alerts
+from .traffic import get_active_alerts, get_traffic
 from models import Accident
 from .prediction import get_prediction
 
@@ -45,8 +45,9 @@ def export_module(modulo: str):
         })
 
     if modulo == 'traffic' or modulo == 'trafico':
+        traffic_data = get_traffic()
         writer.writerow(['id', 'nombre', 'velocidad', 'densidad', 'color'])
-        for segment in traffic_state.get('segments', []):
+        for segment in traffic_data.get('segments', []):
             writer.writerow([
                 segment.get('id'),
                 segment.get('name'),

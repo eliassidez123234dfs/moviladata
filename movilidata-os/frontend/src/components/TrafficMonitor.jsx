@@ -12,198 +12,110 @@ const segmentCoords = {
   'Vía 7': [6.2000, -75.5750], 'Vía 8': [6.2350, -75.5650]
 }
 
+const ROUTE_NAMES = {
+  'Vía 1': 'Autopista Sur', 'Vía 2': 'Av. El Poblado',
+  'Vía 3': 'Av. San Juan', 'Vía 4': 'Av. 33',
+  'Vía 5': 'Av. Oriental', 'Vía 6': 'Av. 80',
+  'Vía 7': 'Av. Las Vegas', 'Vía 8': 'Av. Guayabal'
+}
+
+const STATUS = {
+  green: { label: 'Fluido', speed: '> 35 km/h', color: '#3FB950' },
+  yellow: { label: 'Moderado', speed: '20-35 km/h', color: '#D29922' },
+  red: { label: 'Congestionado', speed: '< 20 km/h', color: '#F85149' }
+}
+
 function TrafficMapMarkers({ segments }) {
   const map = useMap()
   useEffect(() => {
     if (!map || segments.length === 0) return
     const markers = segments.map((seg) => {
       const pos = segmentCoords[seg.name] || [6.24, -75.58]
-      const color = seg.color === 'red' ? '#EF4444' : seg.color === 'yellow' ? '#F59E0B' : '#10B981'
+      const s = STATUS[seg.color] || STATUS.green
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.25)"></div>`,
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${s.color};border:2px solid white"></div>`,
         iconSize: [14, 14], iconAnchor: [7, 7]
       })
       return L.marker(pos, { icon })
-        .bindPopup(`<strong>${seg.name}</strong><br/>Velocidad: ${seg.velocidad} km/h<br/>Estado: ${seg.color === 'red' ? 'Crítico' : seg.color === 'yellow' ? 'Moderado' : 'Fluido'}`)
+        .bindPopup(`<strong>${ROUTE_NAMES[seg.name] || seg.name}</strong><br/>${s.label}<br/>${seg.velocidad} km/h`)
     })
     markers.forEach((m) => m.addTo(map))
-    return () => markers.forEach((m) => m.remove())
+    return () => markers.forEach((m) => map.removeLayer(m))
   }, [map, segments])
   return null
 }
 
-export default function TrafficMonitor({ openDetail }) {
-  const [data, setData] = useState({ segments: [], source_status: 'unknown', source: 'cargando', summary: {} })
-  const [error, setError] = useState('')
+export default function TrafficMonitor() {
+  const [segments, setSegments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    const load = () => {
-      getTraffic().then(setData).catch(() => setError('No se pudo cargar el tráfico.'))
-    }
-    load()
-    const id = setInterval(load, 30000)
-    return () => clearInterval(id)
+    getTraffic().then((data) => setSegments(data.segments || [])).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
-  const { segments, summary, source, source_status, last_update } = data
-
-  const segmentColors = { red: 'danger', yellow: 'warning', green: 'safe' }
+  const counts = { green: 0, yellow: 0, red: 0 }
+  segments.forEach((s) => { if (counts[s.color] !== undefined) counts[s.color]++ })
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5 animate-slide-up">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-surface-900">Monitoreo de Tráfico</h2>
-          <p className="text-sm text-surface-500">Actualizado cada 30s · {segments.length} vías monitoreadas</p>
+          <h2 className="text-lg font-bold" style={{ color: '#C9D1D9' }}>Estado del tráfico</h2>
+          <p className="text-sm" style={{ color: '#8B949E' }}>Monitoreo de vías principales en Medellín</p>
         </div>
-        <button type="button" onClick={() => exportModule('traffic')} className="btn-secondary text-xs">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Exportar CSV
+        <button type="button" onClick={async () => { setExporting(true); try { await exportModule('traffic') } catch {}; setExporting(false) }}
+          disabled={exporting || segments.length === 0} className="btn-secondary text-sm">
+          {exporting ? 'Exportando...' : 'Exportar CSV'}
         </button>
       </div>
 
-      {source_status === 'degraded' && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
-          Datos simulados — fuente principal no disponible. Última actualización: {last_update || 'N/A'}
-        </div>
-      )}
-
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</div>}
-
-      {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MetricCard
-          label="Velocidad promedio"
-          value={summary?.velocidad_promedio ?? '--'}
-          unit="km/h"
-          color="primary"
-          icon="M13 10V3L4 14h7v7l9-11h-7z"
-        />
-        <MetricCard
-          label="Vías congestionadas"
-          value={summary?.vias_congestionadas ?? '--'}
-          color="danger"
-          icon="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          trend={(summary?.vias_congestionadas ?? 0) > 0 ? 100 : 0}
-        />
-        <MetricCard
-          label="Peores vías"
-          value={(summary?.peores_vias || []).slice(0, 3).join(', ') || 'N/A'}
-          color="warning"
-          icon="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-        />
+      <div className="grid gap-3 sm:grid-cols-4">
+        <MetricCard label="Vías monitoreadas" value={segments.length} color="blue" icon="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        <MetricCard label="Fluido" value={counts.green} color="green" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <MetricCard label="Moderado" value={counts.yellow} color="yellow" icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        <MetricCard label="Congestionado" value={counts.red} color="red" icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
       </div>
 
-      {/* Map */}
-      <div className="overflow-hidden rounded-xl border border-surface-200 shadow-sm">
-        <MapWrapper height={400}>
+      <div className="overflow-hidden rounded-xl border" style={{ borderColor: '#30363D' }}>
+        <MapWrapper height={380}>
           <TrafficMapMarkers segments={segments} />
         </MapWrapper>
       </div>
 
-      {/* Legend + Segment List */}
-      <div className="grid gap-5 xl:grid-cols-[1fr_1.5fr]">
-        <div className="space-y-4">
-          <div className="card">
-            <div className="card-header">
-              <h3 className="text-sm font-semibold text-surface-900">Leyenda de estado</h3>
-            </div>
-            <div className="card-body space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-emerald-500" />
-                <div>
-                  <p className="text-sm font-medium text-surface-900">Fluido</p>
-                  <p className="text-2xs text-surface-500">Velocidad &gt; 35 km/h</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-amber-500" />
-                <div>
-                  <p className="text-sm font-medium text-surface-900">Moderado</p>
-                  <p className="text-2xs text-surface-500">Velocidad 20-35 km/h</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-red-500" />
-                <div>
-                  <p className="text-sm font-medium text-surface-900">Congestionado</p>
-                  <p className="text-2xs text-surface-500">Velocidad &lt; 20 km/h</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="card">
-            <div className="card-body">
-              <p className="label">Fuente: {source ?? 'desconocida'}</p>
-              <p className="text-sm text-surface-600">Estado: {source_status ?? 'desconocido'}</p>
-              {last_update && <p className="text-2xs text-surface-400 mt-1">Actualizado: {last_update}</p>}
-            </div>
-          </div>
+      <div className="card">
+        <div className="card-header">
+          <h3 className="text-sm font-semibold" style={{ color: '#C9D1D9' }}>Estado por vía</h3>
         </div>
-
-        <div className="card">
-          <div className="card-header">
-            <h3 className="text-sm font-semibold text-surface-900">Segmentos viales</h3>
-            <p className="text-xs text-surface-500">Detalle por vía monitoreada</p>
-          </div>
-          <div className="card-body space-y-2">
-            {segments.map((segment) => (
-              <div
-                key={segment.id}
-                className="flex items-center gap-3 rounded-lg border border-surface-200 p-3 hover:bg-surface-50 hover:border-surface-300 transition-all cursor-pointer"
-                onClick={() => openDetail && openDetail(`Vía: ${segment.name}`, (
-                  <div className="space-y-4">
-                    <div className="rounded-lg bg-surface-50 p-4">
-                      <p className="kpi-label">Estado</p>
-                      <span className={`badge mt-1 ${
-                        segment.color === 'red' ? 'badge-danger' :
-                        segment.color === 'yellow' ? 'badge-warning' : 'badge-success'
-                      }`}>
-                        {segment.color === 'red' ? 'Crítico' : segment.color === 'yellow' ? 'Moderado' : 'Fluido'}
-                      </span>
+        <div className="card-body">
+          {loading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-9 rounded-lg animate-pulse" style={{ backgroundColor: '#21262D' }} />)}</div>
+          ) : segments.length === 0 ? (
+            <p className="text-sm text-center py-6" style={{ color: '#6E7681' }}>No hay datos disponibles</p>
+          ) : (
+            <div className="space-y-0.5">
+              {segments.map((seg, i) => {
+                const s = STATUS[seg.color] || STATUS.green
+                return (
+                  <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors"
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(88, 166, 255, 0.06)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <span className="flex h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium" style={{ color: '#C9D1D9' }}>{ROUTE_NAMES[seg.name] || seg.name}</p>
+                      <p className="text-2xs" style={{ color: '#6E7681' }}>{s.label} · {s.speed}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-lg bg-surface-50 p-4">
-                        <p className="kpi-label">Velocidad</p>
-                        <p className="text-xl font-bold text-surface-900">{segment.velocidad} <span className="text-sm font-normal text-surface-500">km/h</span></p>
-                      </div>
-                      <div className="rounded-lg bg-surface-50 p-4">
-                        <p className="kpi-label">Densidad</p>
-                        <p className="text-xl font-bold text-surface-900">{segment.densidad ?? '--'}</p>
-                      </div>
-                      <div className="rounded-lg bg-surface-50 p-4">
-                        <p className="kpi-label">Incidentes</p>
-                        <p className="text-xl font-bold text-surface-900">{segment.incidents ?? 0}</p>
-                      </div>
-                      <div className="rounded-lg bg-surface-50 p-4">
-                        <p className="kpi-label">Congestión</p>
-                        <p className="text-xl font-bold text-surface-900">{segment.congestion ?? '--'}%</p>
-                      </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold" style={{ color: s.color }}>{seg.velocidad} km/h</p>
+                      <p className="text-2xs" style={{ color: '#6E7681' }}>{seg.densidad || '-'} veh/km</p>
                     </div>
                   </div>
-                ))}
-              >
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${
-                  segment.color === 'red' ? 'bg-red-500' : segment.color === 'yellow' ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}>
-                  {segment.velocidad || '?'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-surface-900">{segment.name}</p>
-                  <p className="text-2xs text-surface-500">{segment.velocidad} km/h · {segment.densidad || '--'} densidad</p>
-                </div>
-                <span className={`badge ${
-                  segment.color === 'red' ? 'badge-danger' :
-                  segment.color === 'yellow' ? 'badge-warning' : 'badge-success'
-                }`}>
-                  {segment.color === 'red' ? 'Crítico' : segment.color === 'yellow' ? 'Moderado' : 'Fluido'}
-                </span>
-              </div>
-            ))}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

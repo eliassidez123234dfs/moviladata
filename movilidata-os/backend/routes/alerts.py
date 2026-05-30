@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from .traffic import get_active_alerts, get_alert_history
+from .traffic import get_active_alerts, get_alert_history, get_traffic
 
 router = APIRouter()
 

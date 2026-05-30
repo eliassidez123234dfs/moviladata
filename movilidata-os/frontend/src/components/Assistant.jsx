@@ -9,105 +9,94 @@ const quickQuestions = [
 ]
 
 export default function Assistant() {
-  const [query, setQuery] = useState('')
-  const [chat, setChat] = useState([])
+  const [messages, setMessages] = useState([
+    { role: 'assistant', text: '¡Hola! Pregúntame sobre el estado del tráfico, accidentes, rutas o alertas en Medellín.' }
+  ])
+  const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const chatEnd = useRef(null)
+  const [showQuick, setShowQuick] = useState(true)
+  const chatRef = useRef(null)
 
-  useEffect(() => {
-    chatEnd.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chat])
+  useEffect(() => { chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' }) }, [messages])
 
-  async function handleSubmit(text) {
-    const input = (text || query).trim()
-    if (!input) return
-    const message = { role: 'user', text: input }
-    setChat((c) => [...c, message])
-    setQuery(''); setLoading(true); setError('')
-
+  const sendMessage = async (text) => {
+    if (!text.trim() || loading) return
+    setShowQuick(false)
+    setMessages((prev) => [...prev, { role: 'user', text }])
+    setInput('')
+    setLoading(true)
     try {
-      const response = await sendAssistant(input)
-      setChat((c) => [...c, { role: 'assistant', text: response.respuesta || response.message || 'Sin respuesta.' }])
+      const data = await sendAssistant(text)
+      setMessages((prev) => [...prev, { role: 'assistant', text: data.response || 'Lo siento, no pude procesar tu solicitud.' }])
     } catch {
-      setError('Error al enviar la consulta. Intenta de nuevo.')
-    } finally { setLoading(false) }
+      setMessages((prev) => [...prev, { role: 'assistant', text: 'Error al conectar con el servidor. Intenta de nuevo.' }])
+    }
+    setLoading(false)
   }
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-semibold text-surface-900">Asistente de movilidad</h2>
-        <p className="text-sm text-surface-500">Consulta el estado del tráfico, clima, alertas y rutas seguras</p>
+    <div className="flex flex-col h-[calc(100vh-12rem)]">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold" style={{ color: '#C9D1D9' }}>Asistente IA</h2>
+        <p className="text-sm" style={{ color: '#8B949E' }}>Consulta datos de movilidad en lenguaje natural</p>
       </div>
-      <div className="card">
-        <div className="card-body space-y-4">
-          {chat.length === 0 && (
-            <div className="rounded-lg bg-surface-50 p-4">
-              <p className="text-sm font-medium text-surface-700 mb-3">Preguntas rápidas:</p>
-              <div className="flex flex-wrap gap-2">
-                {quickQuestions.map((q) => (
-                  <button key={q} type="button" onClick={() => handleSubmit(q)} disabled={loading}
-                    className="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-100 hover:text-surface-900 hover:border-surface-300 transition-all disabled:opacity-50"
-                  >
-                    {q}
-                  </button>
-                ))}
+
+      <div ref={chatRef} className="flex-1 overflow-y-auto space-y-3 pr-2 mb-4">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-lg px-4 py-3`}
+              style={msg.role === 'user' ? {
+                backgroundColor: '#238636',
+                color: '#FFFFFF'
+              } : {
+                backgroundColor: '#161B22',
+                border: '1px solid #30363D',
+                color: '#C9D1D9'
+              }}>
+              <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="rounded-lg px-4 py-3" style={{ backgroundColor: '#161B22', border: '1px solid #30363D' }}>
+              <div className="flex gap-1">
+                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: '#58A6FF' }} />
+                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: '#58A6FF', animationDelay: '0.15s' }} />
+                <span className="h-2 w-2 rounded-full animate-bounce" style={{ backgroundColor: '#58A6FF', animationDelay: '0.3s' }} />
               </div>
             </div>
-          )}
-          <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }} className="space-y-3">
-            <textarea
-              value={query} onChange={(e) => setQuery(e.target.value)} rows={2}
-              placeholder="Ej: ¿Cómo está el tráfico ahora en Medellín?"
-              className="input resize-none"
-              aria-label="Escribe tu pregunta"
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
-            />
-            <div className="flex items-center gap-3">
-              <button type="submit" disabled={loading} className="btn-primary">
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Consultando...
-                  </span>
-                ) : 'Enviar'}
-              </button>
-              {error && <span className="text-sm text-red-600" role="alert">{error}</span>}
-            </div>
-          </form>
-          {chat.length > 0 && (
-            <div className="rounded-lg border border-surface-200" role="log" aria-label="Historial de conversación">
-              <div className="max-h-96 overflow-y-auto space-y-1 p-2">
-                {chat.map((item, index) => (
-                  <div key={index} className={`rounded-lg p-4 ${
-                    item.role === 'user'
-                      ? 'bg-surface-50 border border-surface-200'
-                      : 'bg-surface-800 text-white'
-                  }`}>
-                    <p className={`text-2xs font-semibold uppercase tracking-wider ${
-                      item.role === 'user' ? 'text-surface-500' : 'text-surface-400'
-                    }`}>
-                      {item.role === 'user' ? 'Tú' : 'Asistente'}
-                    </p>
-                    <p className={`mt-1 whitespace-pre-line text-sm ${
-                      item.role === 'user' ? 'text-surface-900' : 'text-white'
-                    }`}>
-                      {item.text}
-                    </p>
-                  </div>
-                ))}
-                <div ref={chatEnd} />
-              </div>
-            </div>
-          )}
-          {chat.length > 0 && (
-            <p className="text-2xs text-surface-400 text-center">{chat.length} mensajes en esta conversación</p>
-          )}
+          </div>
+        )}
+      </div>
+
+      {showQuick && messages.length === 1 && (
+        <div className="mb-4">
+          <p className="text-xs font-medium mb-2" style={{ color: '#8B949E' }}>Preguntas rápidas:</p>
+          <div className="flex flex-wrap gap-2">
+            {quickQuestions.map((q) => (
+              <button key={q} type="button" onClick={() => sendMessage(q)}
+                className="text-xs rounded-lg px-3 py-2 transition-all"
+                style={{ backgroundColor: '#21262D', border: '1px solid #30363D', color: '#8B949E' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#30363D'; e.currentTarget.style.color = '#C9D1D9' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#21262D'; e.currentTarget.style.color = '#8B949E' }}
+              >{q}</button>
+            ))}
+          </div>
         </div>
+      )}
+
+      <div className="flex gap-2">
+        <input type="text" placeholder="Escribe tu pregunta..." value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) } }}
+          className="input flex-1" disabled={loading} />
+        <button type="button" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}
+          className="btn-primary px-4">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+          </svg>
+        </button>
       </div>
     </div>
   )

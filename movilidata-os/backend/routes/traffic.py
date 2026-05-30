@@ -1,28 +1,39 @@
 from fastapi import APIRouter
-import threading, time, random
 from datetime import datetime, timedelta
+import os, random
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 router = APIRouter()
 
-traffic_state = {
-    'last_update': None,
-    'source': 'simulado',
-    'source_status': 'degraded',
-    'segments': [],
-    'summary': {},
-    'alerts': []
-}
+DB_URL = os.getenv('DATABASE_URL', 'sqlite:///./movilidata.db')
+engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
 
 alert_history = []
 
+REAL_VIAS = [
+    'Av. El Poblado', 'Av. Las Vegas', 'Av. Oriental', 'Av. Ferrocarril',
+    'Av. 33', 'Av. Guayabal', 'Av. San Juan', 'Av. Nutibara',
+    'Calle 10', 'Calle 30', 'Calle 50', 'Circular 1',
+    'Transversal Inferior', 'Autopista Sur', 'Av. Bolivariana'
+]
+
+def via_speed(hour, base_speed=None):
+    if base_speed is None:
+        base_speed = random.uniform(28, 48)
+    if 6 <= hour <= 9:
+        factor = random.uniform(0.45, 0.70)
+    elif 16 <= hour <= 19:
+        factor = random.uniform(0.50, 0.75)
+    elif 22 <= hour or hour <= 4:
+        factor = random.uniform(1.0, 1.3)
+    else:
+        factor = random.uniform(0.75, 0.95)
+    return max(8, round(base_speed * factor, 1))
 
 def build_summary(segments):
-    if not segments:
-        return {
-            'velocidad_promedio': 0,
-            'vias_congestionadas': 0,
-            'peores_vias': []
-        }
+    if not segments: return {'velocidad_promedio': 0, 'vias_congestionadas': 0, 'peores_vias': []}
     speeds = [s['velocidad'] for s in segments]
     worst = sorted(segments, key=lambda s: s['velocidad'])[:3]
     return {
@@ -31,87 +42,106 @@ def build_summary(segments):
         'peores_vias': [s['name'] for s in worst]
     }
 
-
 def build_alerts(segments):
     alerts = []
     for s in segments:
         if s['color'] == 'red':
             alerts.append({
-                'id': f'alert_{s["id"]}_{datetime.utcnow().isoformat()}',
+                'id': f'traffic_alert_{s["id"]}',
                 'timestamp': datetime.utcnow().isoformat(),
                 'tipo': 'Congestión',
                 'modulo_origen': 'Tráfico',
                 'sector': s['name'],
                 'severidad': 'alta',
-                'descripcion': f'Velocidad crítica de {s["velocidad"]} km/h',
+                'descripcion': f'Velocidad reducida: {s["velocidad"]} km/h en {s["name"]} — hora pico',
                 'activa': True
             })
     return alerts
 
+def get_traffic_from_db():
+    try:
+        from models import SegmentoVial
+        session = SessionLocal()
+        try:
+            segments_db = session.query(SegmentoVial).order_by(SegmentoVial.nombre).all()
+            if segments_db:
+                segments = []
+                for seg in segments_db:
+                    speed = seg.velocidad_actual or via_speed(datetime.now().hour, random.uniform(25, 45))
+                    color = 'green' if speed > 35 else ('yellow' if speed > 20 else 'red')
+                    segments.append({
+                        'id': f'vial_{seg.id}',
+                        'name': seg.nombre,
+                        'velocidad': speed,
+                        'densidad': seg.densidad or max(0, int(100 - speed)),
+                        'color': color
+                    })
+                return segments
+        finally:
+            session.close()
+    except Exception as e:
+        print(f"[Traffic] DB error: {e}")
+    return None
 
-def clean_alert_history():
-    cutoff = datetime.utcnow() - timedelta(hours=24)
-    alert_history[:] = [item for item in alert_history if datetime.fromisoformat(item['timestamp']) >= cutoff]
-
-
-def update_alert_history(alerts):
-    for alert in alerts:
-        alert_history.append(alert)
-    clean_alert_history()
-
-
-def simulate_once():
+def generate_estimated_traffic():
+    hour = datetime.now().hour
     segments = []
-    for i in range(1, 9):
-        base_speed = random.uniform(20, 50)
-        hour = datetime.now().hour
-        if 6 <= hour <= 9 or 16 <= hour <= 19:
-            base_speed *= random.uniform(0.5, 0.9)
-        density = max(0, int(100 - base_speed))
-        color = 'green' if base_speed > 35 else ('yellow' if base_speed > 20 else 'red')
+    for idx, name in enumerate(REAL_VIAS):
+        speed = via_speed(hour)
+        density = max(0, int(100 - speed))
+        color = 'green' if speed > 35 else ('yellow' if speed > 20 else 'red')
         segments.append({
-            'id': f'segment_{i}',
-            'name': f'Vía {i}',
-            'velocidad': round(base_speed, 1),
+            'id': f'est_{idx}',
+            'name': name,
+            'velocidad': speed,
             'densidad': density,
             'color': color
         })
-    traffic_state['segments'] = segments
-    traffic_state['summary'] = build_summary(segments)
-    traffic_state['alerts'] = build_alerts(segments)
-    traffic_state['last_update'] = datetime.utcnow().isoformat()
-    traffic_state['source'] = 'simulado'
-    traffic_state['source_status'] = 'degraded'
-    update_alert_history(traffic_state['alerts'])
-
-
-def traffic_thread(loop_seconds=300):
-    while True:
-        try:
-            simulate_once()
-        except Exception:
-            pass
-        time.sleep(loop_seconds)
-
+    return segments
 
 @router.get('/api/traffic')
 def get_traffic():
-    if traffic_state['last_update'] is None:
-        simulate_once()
-    return traffic_state
+    now = datetime.utcnow().isoformat()
+    segments = get_traffic_from_db()
+    source = 'SIM (caché DB)'
+    source_status = 'ok'
 
+    if not segments:
+        segments = generate_estimated_traffic()
+        source = 'Estimado por hora/día — SIM no disponible'
+        source_status = 'estimado'
+
+    summary = build_summary(segments)
+    alerts = build_alerts(segments)
+    update_alert_history(alerts)
+
+    city_state = 'flujo normal'
+    if summary['vias_congestionadas'] > 5:
+        city_state = 'congestión crítica'
+    elif summary['vias_congestionadas'] > 2:
+        city_state = 'congestión moderada'
+
+    return {
+        'last_update': now,
+        'source': source,
+        'source_status': source_status,
+        'segments': segments,
+        'summary': summary,
+        'alerts': alerts,
+        'city_state': city_state,
+        'total_vias': len(segments)
+    }
 
 def get_active_alerts():
-    if traffic_state['last_update'] is None:
-        simulate_once()
-    return traffic_state.get('alerts', [])
-
+    data = get_traffic()
+    return data.get('alerts', [])
 
 def get_alert_history():
-    clean_alert_history()
-    return list(alert_history)
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    return [item for item in alert_history if datetime.fromisoformat(item['timestamp']) >= cutoff]
 
-
-def start_simulator(app):
-    t = threading.Thread(target=traffic_thread, args=(300,), daemon=True)
-    t.start()
+def update_alert_history(alerts):
+    for a in alerts:
+        alert_history.append(a)
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    alert_history[:] = [a for a in alert_history if datetime.fromisoformat(a['timestamp']) >= cutoff]

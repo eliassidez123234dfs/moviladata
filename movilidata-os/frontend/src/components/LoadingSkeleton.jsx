@@ -1,5 +1,5 @@
-const skeletonBg = { backgroundColor: 'var(--color-surface-hover)' }
-const skeletonBg2 = { backgroundColor: 'var(--color-border)' }
+const skeletonBg = { backgroundColor: 'rgba(0, 255, 255, 0.06)' }
+const skeletonBg2 = { backgroundColor: 'rgba(0, 255, 255, 0.04)' }
 
 export function CardSkeleton() {
   return (

@@ -1,19 +1,40 @@
-import { MapContainer, TileLayer } from 'react-leaflet'
-import { useSelector } from 'react-redux'
+import { useEffect, useRef } from 'react'
+import { MapContainer, TileLayer, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-export default function MapWrapper({ children, center=[6.25,-75.57], zoom=12, height=400 }){
-  const darkMode = useSelector((state) => state.ui.darkMode)
-  const tileUrl = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-  const attribution = darkMode
-    ? '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-    : '&copy; <a href="https://openstreetmap.org/copyright">OSM</a>'
+function MapUpdater({ center }) {
+  const map = useMap()
+  const prevCenter = useRef(center)
+  useEffect(() => {
+    if (!center || !map) return
+    const [lat, lon] = center
+    const [pLat, pLon] = prevCenter.current || []
+    if (lat !== pLat || lon !== pLon) {
+      map.setView([lat, lon], map.getZoom(), { animate: true })
+      prevCenter.current = center
+    }
+  }, [map, center])
+  return null
+}
+
+export default function MapWrapper({ children, center, zoom = 13, height = 400 }) {
+  const mapCenter = center || [6.25, -75.57]
 
   return (
-    <MapContainer center={center} zoom={zoom} style={{height: `${height}px`, width: '100%'}}>
-      <TileLayer key={tileUrl} url={tileUrl} attribution={attribution} />
+    <MapContainer
+      center={mapCenter}
+      zoom={zoom}
+      style={{ height: `${height}px`, width: '100%', borderRadius: '0.75rem' }}
+      zoomControl={true}
+    >
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        maxZoom={19}
+        minZoom={10}
+      />
+      {center && <MapUpdater center={center} />}
       {children}
     </MapContainer>
   )

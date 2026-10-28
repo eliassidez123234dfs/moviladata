@@ -1,6 +1,4 @@
-<div align="center">
-  <img src="assets/logo.svg" alt="Movilidata OS Logo" width="400" />
-</div>
+
 
 <div align="center">
 

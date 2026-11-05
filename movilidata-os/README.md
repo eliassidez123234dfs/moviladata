@@ -37,15 +37,15 @@ Monitoreo en tiempo real + predicción de congestión + detección de zonas crí
 │                         CAPA DE PROCESAMIENTO                      │
 │          FastAPI + SQLAlchemy 2.0 + APScheduler + Pydantic         │
 │  ┌──────────┬──────────┬──────────┬──────────────────────────────┐ │
-│  │  Ingesta │  Modelos │  Agente  │   Gestor de Resiliencia     │ │
-│  │  Periód. │  Analít. │  IA Local│   Cache + Degradación       │ │
+│  │  Ingesta │  Modelos │  Agente  │   Gestor de Resiliencia      │ │
+│  │  Periód. │  Analít. │  IA Local│   Cache + Degradación        │ │
 │  └──────────┴──────────┴──────────┴──────────────────────────────┘ │
 ├────────────────────────────────────────────────────────────────────┤
 │                          CAPA DE DATOS                             │
-│         SQLite + CSVs + APIs Externas + Caché en Memoria          │
+│         SQLite + CSVs + APIs Externas + Caché en Memoria           │
 │  ┌──────────┬──────────┬──────────┬──────────────────────────────┐ │
-│  │  Medata  │  SIATA   │   SIM    │  OpenStreetMap / Google     │ │
-│  │Accidentes│  Clima   │  Tráfico │        Mapas                │ │
+│  │  Medata  │  SIATA   │   SIM    │  OpenStreetMap / Google      │ │
+│  │Accidentes│  Clima   │  Tráfico │        Mapas                 │ │
 │  └──────────┴──────────┴──────────┴──────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────────┘
 ```
